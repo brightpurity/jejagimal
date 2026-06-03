@@ -29,7 +29,6 @@
             word-break: keep-all; 
         }
 
-        /* 💡 추가: 각 학습 화면 상단에 들어갈 타이틀 스타일 */
         .view-title {
             font-size: 20px;
             font-weight: bold;
@@ -56,7 +55,13 @@
             color: #555;
         }
 
-        #main-app, #all-verses-view { 
+        /* 💡 모의고사 단추 전용 보라색 스타일 */
+        button.btn-exam {
+            background: #6f42c1;
+        }
+        button.btn-exam:hover { background: #5a32a3; }
+
+        #main-app, #all-verses-view, #exam-view, #exam-result-view { 
             width: 100%;
             max-width: 600px;
             margin: 0 auto;
@@ -83,7 +88,7 @@
             font-weight: bold; 
         }
         
-        #mode-selection button { width: 100%; padding: 15px 10px; }
+        #mode-selection button { window: 100%; padding: 15px 10px; }
         
         button:hover { background: #0056b3; }
         button.btn-all { background: #28a745; }
@@ -147,9 +152,7 @@
         }
         .word.show { display: inline; }
         
-        #verses-list {
-            text-align: left; 
-        }
+        #verses-list { text-align: left; }
         .verse-item {
             background: white;
             padding: 20px;
@@ -171,15 +174,62 @@
             word-break: keep-all;
         }
 
+        /* 💡 모의고사 UI 전용 스타일 */
+        .exam-list { text-align: left; margin-bottom: 20px; }
+        .exam-item {
+            background: white;
+            padding: 20px;
+            border-radius: 12px;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.05);
+            margin-bottom: 15px;
+        }
+        .exam-item-ref { font-size: 18px; font-weight: bold; color: #333; margin-bottom: 12px; }
+        .exam-input-wrap { display: flex; flex-direction: column; gap: 8px; }
+        
+        /* 주관식 입력창 */
+        .exam-textarea {
+            width: 100%;
+            height: 70px;
+            padding: 10px;
+            font-size: 16px;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            resize: none;
+            font-family: sans-serif;
+        }
+        .exam-textarea:focus { border-color: #6f42c1; outline: none; }
+        
+        /* 음성 입력 단추 */
+        button.btn-mic { background: #17a2b8; font-size: 14px; padding: 8px 10px; align-self: flex-end; }
+        button.btn-mic:hover { background: #138496; }
+
+        /* 모의고사 결과창 스타일 */
+        .score-box {
+            background: #6f42c1; color: white; padding: 20px; border-radius: 12px;
+            font-size: 22px; font-weight: bold; margin-bottom: 25px;
+        }
+        .result-item {
+            background: white; padding: 20px; border-radius: 12px;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.05); margin-bottom: 15px; text-align: left;
+        }
+        .result-item.correct { border-left: 5px solid #28a745; }
+        .result-item.wrong { border-left: 5px solid #dc3545; }
+        
+        .result-status { font-weight: bold; font-size: 15px; margin-bottom: 5px; }
+        .result-status.correct { color: #28a745; }
+        .result-status.wrong { color: #dc3545; }
+        
+        .result-ref { font-size: 17px; font-weight: bold; color: #333; margin-bottom: 10px; }
+        .result-text-box { font-size: 15px; margin-top: 5px; line-height: 1.4; }
+        .result-label { font-weight: bold; color: #666; }
+
         #loading { font-size: 18px; color: #666; margin: auto; }
     </style>
 </head>
 <body>
 
-    <!-- 💡 수정 3: 최초 로딩 문구 변경 -->
     <div id="loading">데이터를 불러오는 중...</div>
 
-    <!-- 1. 최초 모드 선택 화면 -->
     <div id="mode-selection" style="display: none;">
         <h1>장충교회 제자훈련 기말시험</h1>
         <h2>학습 모드를 선택하세요</h2>
@@ -187,37 +237,54 @@
         <div style="border-top: 1px solid #eee; margin: 5px 0;"></div>
         <button onclick="startApp('sequential')">🔁 순서대로 외우기</button>
         <button onclick="startApp('random')">🔀 무작위로 외우기</button>
+        <div style="border-top: 1px solid #eee; margin: 5px 0;"></div>
+        <button class="btn-exam" onclick="startApp('exam')">📝 모의고사 응시하기</button>
     </div>
 
-    <!-- 2. 실제 암기 학습 화면 -->
     <div id="main-app" style="display: none;">
-        <!-- 💡 수정 2: 학습 모드에 따라 상단 텍스트가 동적으로 들어갈 공간 -->
         <div id="app-title" class="view-title"></div>
-
         <div class="controls">
             <button class="btn-home" onclick="goHome()">🏠 처음</button>
             <button class="btn-prev" onclick="prevVerse()">⬅️ 이전</button>
             <button class="btn-next" onclick="nextVerse()">다음 ➡️</button>
         </div>
-
         <p class="hint-text">화면(흰 박스)을 클릭하면 다음 단어가 하나씩 나옵니다.</p>
-
         <div id="verse-box" onclick="showNextWord()">
             <div id="info"></div>
             <div id="text-container"></div>
         </div>
     </div>
 
-    <!-- 3. 모든 구절 나열 화면 -->
     <div id="all-verses-view" style="display: none;">
-        <!-- 💡 수정 1: '처음으로' 단추 상단에 고정 텍스트 배치 -->
         <div class="view-title">모든 구절 보기</div>
-
         <div class="controls">
             <button class="btn-home" onclick="goHome()">🏠 처음으로</button>
         </div>
-        
         <div id="verses-list"></div>
+    </div>
+
+    <div id="exam-view" style="display: none;">
+        <div class="view-title">📝 주관식 모의고사 (10문항)</div>
+        <div class="controls">
+            <button class="btn-home" onclick="goHome()">🏠 포기하고 처음으로</button>
+        </div>
+        <p class="hint-text" style="color:#888;">🎙️ 버튼을 누르고 마이크 권한을 허용하면 말로 입력할 수 있습니다.</p>
+        
+        <div id="exam-questions" class="exam-list"></div>
+        
+        <button class="btn-all" style="padding:15px; font-size:18px; margin-bottom:40px;" onclick="gradeExam()">💯 채점하기</button>
+    </div>
+
+    <div id="exam-result-view" style="display: none;">
+        <div class="view-title">💯 모의고사 채점 결과</div>
+        
+        <div id="score-display" class="score-box"></div>
+        
+        <div class="controls">
+            <button class="btn-home" style="padding:15px;" onclick="goHome()">🏠 메인 화면으로 돌아가기</button>
+        </div>
+        
+        <div id="exam-results" class="exam-list"></div>
     </div>
 
     <script>
@@ -232,6 +299,10 @@
         
         let randomHistory = []; 
         let randomPointer = -1; 
+
+        // 모의고사 진행용 데이터 변수
+        let examVerses = [];
+        let activeRecognition = null; // 음성인식 객체 보관용
 
         async function loadBibleData() {
             try {
@@ -272,10 +343,13 @@
             if (mode === 'view-all') {
                 document.getElementById('all-verses-view').style.display = 'flex';
                 renderAllVerses();
+            } else if (mode === 'exam') {
+                // 💡 모의고사 모드 진입
+                document.getElementById('exam-view').style.display = 'flex';
+                setupExam();
             } else {
                 currentMode = mode;
                 
-                // 💡 수정 2: 선택한 모드에 따라 상단 텍스트 변경
                 const titleElement = document.getElementById('app-title');
                 if (mode === 'sequential') {
                     titleElement.innerText = "순서대로 외우기";
@@ -293,8 +367,14 @@
         }
 
         function goHome() {
+            // 혹시 음성인식이 켜져 있다면 종료
+            if (activeRecognition) {
+                activeRecognition.stop();
+            }
             document.getElementById('main-app').style.display = 'none';
             document.getElementById('all-verses-view').style.display = 'none'; 
+            document.getElementById('exam-view').style.display = 'none'; 
+            document.getElementById('exam-result-view').style.display = 'none'; 
             document.getElementById('mode-selection').style.display = 'flex';
             
             window.scrollTo(0, 0); 
@@ -322,6 +402,170 @@
                 item.appendChild(text);
                 container.appendChild(item);
             });
+        }
+
+        // 💡 10개 문제 출제 로직
+        function setupExam() {
+            const container = document.getElementById('exam-questions');
+            container.innerHTML = "";
+            
+            if (bibleDB.length === 0) {
+                container.innerHTML = "<p>등록된 성경 구절 데이터가 없습니다.</p>";
+                return;
+            }
+
+            // 원본 DB 배열을 무작위로 섞기
+            const shuffled = [...bibleDB].sort(() => 0.5 - Math.random());
+            // 최대 10개 문항 선택
+            examVerses = shuffled.slice(0, Math.min(10, bibleDB.length));
+
+            examVerses.forEach((verse, index) => {
+                const item = document.createElement('div');
+                item.className = 'exam-item';
+                
+                const refDiv = document.createElement('div');
+                refDiv.className = 'exam-item-ref';
+                refDiv.innerText = `Q${index + 1}. ${verse.reference}`;
+                
+                const inputWrap = document.createElement('div');
+                inputWrap.className = 'exam-input-wrap';
+                
+                // 주관식 받아쓰기를 위한 textarea 생성
+                const textarea = document.createElement('textarea');
+                textarea.className = 'exam-textarea';
+                textarea.id = `exam-input-${index}`;
+                textarea.placeholder = "여기에 성경 구절 정답을 입력하거나 아래 음성 입력을 사용하세요.";
+                
+                // 마이크 음성 인식 버튼 생성
+                const micBtn = document.createElement('button');
+                micBtn.className = 'btn-mic';
+                micBtn.id = `exam-mic-${index}`;
+                micBtn.innerText = "🎙️ 음성 입력";
+                micBtn.onclick = () => toggleVoiceInput(index);
+                
+                inputWrap.appendChild(textarea);
+                inputWrap.appendChild(micBtn);
+                item.appendChild(refDiv);
+                item.appendChild(inputWrap);
+                container.appendChild(item);
+            });
+        }
+
+        // 💡 핵심: 음성 인식(STT) 토글 처리 함수
+        function toggleVoiceInput(index) {
+            const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+            if (!SpeechRecognition) {
+                alert("현재 브라우저는 음성 인식을 지원하지 않습니다. 구글 크롬(Chrome)이나 사파리(Safari) 브라우저를 이용해 주세요.");
+                return;
+            }
+
+            const micBtn = document.getElementById(`exam-mic-${index}`);
+            const textarea = document.getElementById(`exam-input-${index}`);
+
+            // 만약 현재 이 버튼으로 이미 녹음 중이라면 중지
+            if (activeRecognition && micBtn.innerText.includes("듣는 중")) {
+                activeRecognition.stop();
+                return;
+            }
+
+            // 기존에 돌고 있던 음성인식이 있다면 강제 종료
+            if (activeRecognition) {
+                activeRecognition.stop();
+            }
+
+            const recognition = new SpeechRecognition();
+            recognition.continuous = false;
+            recognition.interimResults = false;
+            recognition.lang = 'ko-KR'; // 한국어 설정
+
+            recognition.onstart = () => {
+                activeRecognition = recognition;
+                micBtn.innerText = "🛑 듣는 중... 말씀하세요";
+                micBtn.style.background = "#dc3545"; // 빨간색으로 변경
+            };
+
+            recognition.onresult = (event) => {
+                const speechResult = event.results[0][0].transcript;
+                // 기존 입력내용이 있다면 공백 추가 후 이어 붙이고, 없으면 새로 넣음
+                if (textarea.value.trim() === "") {
+                    textarea.value = speechResult;
+                } else {
+                    textarea.value += " " + speechResult;
+                }
+            };
+
+            recognition.onerror = (event) => {
+                console.error("음성인식 오류 발생: ", event.error);
+                if (event.error === 'not-allowed') {
+                    alert("마이크 사용 권한이 거부되었습니다. 브라우저 설정에서 마이크를 허용해 주세요.");
+                }
+            };
+
+            recognition.onend = () => {
+                micBtn.innerText = "🎙️ 음성 입력";
+                micBtn.style.background = "#17a2b8"; // 원래 색상 복귀
+                activeRecognition = null;
+            };
+
+            recognition.start();
+        }
+
+        // 💡 똑똑한 글자 알맹이 채점 함수 (공백 및 각종 문장부호 제거 후 비교)
+        function cleanText(text) {
+            return text.replace(/[\s\.\,\?\!\'\"“”‘’]/g, "");
+        }
+
+        // 💡 모의고사 채점 및 결과 화면 구현
+        function gradeExam() {
+            if (activeRecognition) activeRecognition.stop();
+
+            const resultsContainer = document.getElementById('exam-results');
+            resultsContainer.innerHTML = "";
+            
+            let score = 0;
+
+            examVerses.forEach((verse, index) => {
+                const userInput = document.getElementById(`exam-input-${index}`).value.trim();
+                
+                // 알맹이만 남겨서 비교
+                const isCorrect = cleanText(userInput) === cleanText(verse.text);
+                if (isCorrect) score++;
+
+                // 결과 카드박스 디자인 생성
+                const resultCard = document.createElement('div');
+                resultCard.className = `result-item ${isCorrect ? 'correct' : 'wrong'}`;
+                
+                const statusDiv = document.createElement('div');
+                statusDiv.className = `result-status ${isCorrect ? 'correct' : 'wrong'}`;
+                statusDiv.innerText = isCorrect ? "⭕ 정답" : "❌ 오답";
+                
+                const refDiv = document.createElement('div');
+                refDiv.className = 'result-ref';
+                refDiv.innerText = `Q${index + 1}. ${verse.reference}`;
+                
+                const textBox = document.createElement('div');
+                textBox.className = 'result-text-box';
+                textBox.innerHTML = `
+                    <p><span class="result-label">정답 성구:</span> ${verse.text}</p>
+                    <p style="margin-top: 5px; color: ${isCorrect ? '#28a745' : '#dc3545'}">
+                        <span class="result-label">내 답변:</span> ${userInput === "" ? "(입력 없음)" : userInput}
+                    </p>
+                `;
+                
+                resultCard.appendChild(statusDiv);
+                resultCard.appendChild(refDiv);
+                resultCard.appendChild(textBox);
+                resultsContainer.appendChild(resultCard);
+            });
+
+            // 점수판 표시
+            document.getElementById('score-display').innerText = `🎯 내 점수: ${score} / ${examVerses.length} 문항 맞춤 (${Math.round((score/examVerses.length)*100)}점)`;
+
+            // 화면 전환
+            document.getElementById('exam-view').style.display = 'none';
+            document.getElementById('exam-result-view').style.display = 'flex';
+            
+            window.scrollTo(0, 0);
         }
 
         function nextVerse() {
