@@ -12,23 +12,30 @@
     <style>
         * { box-sizing: border-box; margin: 0; padding: 0; }
         
-        /* 💡 수정 1: 이중 스크롤 방지. body의 높이 제한(100vh)을 풀고 자연스럽게 늘어나게 함 */
         body { 
             font-family: sans-serif; 
             text-align: center; 
             background-color: #f9f9f9; 
             display: flex;
             flex-direction: column;
-            min-height: 100vh; /* 화면을 덮되 내용이 많으면 자연스럽게 스크롤됨 */
+            min-height: 100vh; 
             padding: 20px;
         }
 
-        /* 💡 수정 3: h1(타이틀)은 모드 선택 화면에서만 보이도록 이동 */
         h1 { 
             font-size: 26px; 
             margin-bottom: 25px;
             color: #333; 
             word-break: keep-all; 
+        }
+
+        /* 💡 추가: 각 학습 화면 상단에 들어갈 타이틀 스타일 */
+        .view-title {
+            font-size: 20px;
+            font-weight: bold;
+            color: #444;
+            margin-top: 10px;
+            margin-bottom: 15px;
         }
 
         #mode-selection {
@@ -60,13 +67,13 @@
         /* 상단 컨트롤 영역 */
         .controls {
             display: flex;
-            gap: 8px; /* 버튼이 3개로 늘어났으므로 간격 살짝 조정 */
+            gap: 8px; 
             width: 100%;
             margin-bottom: 10px; 
         }
 
         button { 
-            padding: 12px 5px; /* 모바일에서 3개 버튼이 잘리도록 않게 좌우 여백 조정 */
+            padding: 12px 5px; 
             font-size: 15px; 
             cursor: pointer; 
             border-radius: 5px; 
@@ -87,7 +94,6 @@
         button.btn-home { background: #6c757d; }
         button.btn-home:hover { background: #5a6268; }
         
-        /* 💡 추가: 이전 버튼 색상 (조금 다른 파란색/회색 계열로 구분) */
         button.btn-prev { background: #17a2b8; }
         button.btn-prev:hover { background: #138496; }
 
@@ -98,10 +104,10 @@
             word-break: keep-all; 
         }
 
-        /* 💡 수정 2: 내부 스크롤(overflow-y) 제거. 최소 높이만 주어 모바일 화면을 덮도록 설정 */
+        /* 본문 암기 박스 스타일 */
         #verse-box { 
             width: 100%;
-            min-height: 60vh; /* 화면의 60% 정도는 항상 차지하도록 함 */
+            min-height: 60vh; 
             padding: 30px 20px; 
             background: white; 
             border-radius: 12px; 
@@ -141,7 +147,6 @@
         }
         .word.show { display: inline; }
         
-        /* 💡 수정 1: 내부 스크롤 제거. 내용물이 많아지면 전체 웹페이지 자체가 스크롤됨 */
         #verses-list {
             text-align: left; 
         }
@@ -171,8 +176,10 @@
 </head>
 <body>
 
-    <div id="loading">스프레드시트에서 성경 구절을 불러오는 중...</div>
+    <!-- 💡 수정 3: 최초 로딩 문구 변경 -->
+    <div id="loading">데이터를 불러오는 중...</div>
 
+    <!-- 1. 최초 모드 선택 화면 -->
     <div id="mode-selection" style="display: none;">
         <h1>장충교회 제자훈련 기말시험</h1>
         <h2>학습 모드를 선택하세요</h2>
@@ -182,7 +189,11 @@
         <button onclick="startApp('random')">🔀 무작위로 외우기</button>
     </div>
 
+    <!-- 2. 실제 암기 학습 화면 -->
     <div id="main-app" style="display: none;">
+        <!-- 💡 수정 2: 학습 모드에 따라 상단 텍스트가 동적으로 들어갈 공간 -->
+        <div id="app-title" class="view-title"></div>
+
         <div class="controls">
             <button class="btn-home" onclick="goHome()">🏠 처음</button>
             <button class="btn-prev" onclick="prevVerse()">⬅️ 이전</button>
@@ -197,7 +208,11 @@
         </div>
     </div>
 
+    <!-- 3. 모든 구절 나열 화면 -->
     <div id="all-verses-view" style="display: none;">
+        <!-- 💡 수정 1: '처음으로' 단추 상단에 고정 텍스트 배치 -->
+        <div class="view-title">모든 구절 보기</div>
+
         <div class="controls">
             <button class="btn-home" onclick="goHome()">🏠 처음으로</button>
         </div>
@@ -212,12 +227,11 @@
         let currentWords = [];
         let currentWordIndex = 0;
         
-        // 💡 4번 로직: 모드 및 순서 관리를 위한 변수들
         let currentMode = 'random';
-        let currentVerseIndex = -1; // 순서대로 모드용 인덱스
+        let currentVerseIndex = -1; 
         
-        let randomHistory = []; // 무작위 모드에서 지나온 구절 기억
-        let randomPointer = -1; // 현재 히스토리에서 몇 번째를 보고 있는지
+        let randomHistory = []; 
+        let randomPointer = -1; 
 
         async function loadBibleData() {
             try {
@@ -230,7 +244,7 @@
                 document.getElementById('mode-selection').style.display = 'flex';
             } catch (error) {
                 console.error("데이터를 불러오는 중 오류 발생:", error);
-                document.getElementById('loading').innerText = "스프레드시트 데이터를 불러오지 못했습니다. URL이나 공유 설정을 확인해 주세요.";
+                document.getElementById('loading').innerText = "데이터를 불러오지 못했습니다. URL이나 공유 설정을 확인해 주세요.";
             }
         }
 
@@ -261,7 +275,14 @@
             } else {
                 currentMode = mode;
                 
-                // 모드를 켤 때마다 학습 기록 초기화
+                // 💡 수정 2: 선택한 모드에 따라 상단 텍스트 변경
+                const titleElement = document.getElementById('app-title');
+                if (mode === 'sequential') {
+                    titleElement.innerText = "순서대로 외우기";
+                } else if (mode === 'random') {
+                    titleElement.innerText = "무작위로 외우기";
+                }
+                
                 currentVerseIndex = -1; 
                 randomHistory = [];
                 randomPointer = -1;
@@ -276,7 +297,6 @@
             document.getElementById('all-verses-view').style.display = 'none'; 
             document.getElementById('mode-selection').style.display = 'flex';
             
-            // 페이지 상단으로 스크롤 끌어올리기
             window.scrollTo(0, 0); 
         }
 
@@ -304,49 +324,41 @@
             });
         }
 
-        // 💡 4번 로직: 다음 구절 처리
         function nextVerse() {
             if (bibleDB.length === 0) return;
 
             if (currentMode === 'random') {
-                // 이미 기억된 히스토리가 뒤에 남아있다면 그걸 보여줌 (이전으로 돌아갔다 다시 올 때)
                 if (randomPointer < randomHistory.length - 1) {
                     randomPointer++;
                     renderSingleVerse(randomHistory[randomPointer]);
                 } else {
-                    // 새로운 무작위 구절 뽑기
                     const newIdx = Math.floor(Math.random() * bibleDB.length);
                     randomHistory.push(newIdx);
                     randomPointer++;
                     renderSingleVerse(newIdx);
                 }
             } else {
-                // 순서대로 모드: 다음 인덱스로 (마지막이면 처음으로)
                 currentVerseIndex = (currentVerseIndex + 1) % bibleDB.length;
                 renderSingleVerse(currentVerseIndex);
             }
         }
 
-        // 💡 4번 로직: 이전 구절 처리
         function prevVerse() {
             if (bibleDB.length === 0) return;
 
             if (currentMode === 'random') {
-                // 무작위 모드: 저장해둔 히스토리에서 뒤로 가기
                 if (randomPointer > 0) {
                     randomPointer--;
                     renderSingleVerse(randomHistory[randomPointer]);
                 } else {
-                    alert("첫 번째 구절입니다."); // 더 이상 돌아갈 곳이 없을 때
+                    alert("첫 번째 구절입니다."); 
                 }
             } else {
-                // 순서대로 모드: 이전 인덱스로 (처음이면 맨 마지막으로)
                 currentVerseIndex = (currentVerseIndex - 1 + bibleDB.length) % bibleDB.length;
                 renderSingleVerse(currentVerseIndex);
             }
         }
 
-        // 화면에 구절을 뿌려주는 공통 함수
         function renderSingleVerse(index) {
             const verse = bibleDB[index];
             document.getElementById('info').innerText = verse.reference;
