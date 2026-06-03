@@ -3,6 +3,11 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    
+    <meta property="og:title" content="장충교회 제자훈련 기말시험">
+    <meta property="og:description" content="구글 스프레드시트와 연동된 성경 암기 연습 프로그램">
+    <meta property="og:type" content="website">
+
     <title>장충교회 제자훈련 기말시험</title>
     <style>
         * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -36,7 +41,7 @@
             box-shadow: 0 4px 10px rgba(0,0,0,0.08);
             display: flex;
             flex-direction: column;
-            gap: 15px;
+            gap: 12px;
         }
         #mode-selection h2 {
             font-size: 20px;
@@ -44,14 +49,15 @@
             color: #555;
         }
 
-        /* 학습 화면 전체를 감싸는 영역 */
-        #main-app { 
+        /* 학습 화면 및 전체보기 화면 공통 레이아웃 */
+        #main-app, #all-verses-view { 
             width: 100%;
             max-width: 600px;
             margin: 0 auto;
             flex: 1; 
             display: flex; 
             flex-direction: column;
+            height: 100%;
         }
 
         /* 상단 컨트롤 영역 */
@@ -59,7 +65,7 @@
             display: flex;
             gap: 10px;
             width: 100%;
-            margin-bottom: 10px; /* 안내 문구와의 간격을 위해 살짝 조정 */
+            margin-bottom: 10px; 
         }
 
         button { 
@@ -79,6 +85,12 @@
         
         button:hover { background: #0056b3; }
         
+        /* 💡 모든 구절 보기 버튼 전용 (초록색 스타일) */
+        button.btn-all {
+            background: #28a745;
+        }
+        button.btn-all:hover { background: #218838; }
+
         .controls button {
             flex: 1;
         }
@@ -87,7 +99,6 @@
         }
         button.btn-home:hover { background: #5a6268; }
 
-        /* 💡 수정: 안내 메시지가 버튼과 박스 사이에 예쁘게 위치하도록 여백 조정 */
         .hint-text { 
             color: #aaa; 
             margin-bottom: 15px; 
@@ -139,6 +150,34 @@
         }
         .word.show { display: inline; }
         
+        /* 💡 [새로운 디자인] 모든 구절 리스트 스타일 (모바일 최적화 세로 스크롤) */
+        #verses-list {
+            flex: 1;
+            overflow-y: auto;
+            text-align: left; /* 긴 문장은 왼쪽 정렬이 가독성에 좋습니다 */
+            padding-right: 5px;
+        }
+        .verse-item {
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+            margin-bottom: 15px;
+            border-left: 4px solid #28a745; /* 왼쪽 초록 포인트 바 */
+        }
+        .verse-item-ref {
+            font-size: 16px;
+            font-weight: bold;
+            color: #218838;
+            margin-bottom: 8px;
+        }
+        .verse-item-text {
+            font-size: 18px;
+            color: #333;
+            line-height: 1.6;
+            word-break: keep-all;
+        }
+
         #loading { font-size: 18px; color: #666; margin: auto; }
     </style>
 </head>
@@ -146,30 +185,38 @@
 
     <h1>장충교회 제자훈련 기말시험</h1>
 
-    <!-- 로딩 화면 -->
     <div id="loading">스프레드시트에서 성경 구절을 불러오는 중...</div>
 
-    <!-- 1. 최초 모드 선택 화면 -->
     <div id="mode-selection" style="display: none;">
         <h2>학습 모드를 선택하세요</h2>
+        <button class="btn-all" onclick="startApp('view-all')">📋 모든 구절 보기</button>
+        <div style="border-top: 1px solid #eee; margin: 5px 0;"></div>
         <button onclick="startApp('sequential')">🔁 순서대로 외우기</button>
         <button onclick="startApp('random')">🔀 무작위로 외우기</button>
     </div>
 
-    <!-- 2. 실제 암기 학습 화면 -->
     <div id="main-app" style="display: none;">
         <div class="controls">
             <button class="btn-home" onclick="goHome()">🏠 처음으로</button>
             <button onclick="nextVerse()">다음 구절 ➡️</button>
         </div>
 
-        <!-- 💡 위치 변경: 버튼 박스와 아래 흰 박스 사이로 안내 메시지 이동 -->
         <p class="hint-text">화면(흰 박스)을 클릭하면 다음 단어가 하나씩 나옵니다.</p>
 
         <div id="verse-box" onclick="showNextWord()">
             <div id="info"></div>
             <div id="text-container"></div>
         </div>
+    </div>
+
+    <div id="all-verses-view" style="display: none;">
+        <div class="controls">
+            <button class="btn-home" onclick="goHome()">🏠 처음으로</button>
+        </div>
+        <p class="hint-text" style="color: #888;">💡 등록된 모든 성경 구절을 순서대로 정독합니다.</p>
+        
+        <div id="verses-list">
+            </div>
     </div>
 
     <script>
@@ -216,18 +263,56 @@
         }
 
         function startApp(mode) {
-            currentMode = mode;
-            sequentialIndex = 0;
-
             document.getElementById('mode-selection').style.display = 'none';
-            document.getElementById('main-app').style.display = 'flex';
 
-            nextVerse();
+            if (mode === 'view-all') {
+                // 💡 모든 구절 보기 화면 켜기 및 리스트 렌더링
+                document.getElementById('all-verses-view').style.display = 'flex';
+                renderAllVerses();
+            } else {
+                // 학습 화면 켜기
+                currentMode = mode;
+                sequentialIndex = 0;
+                document.getElementById('main-app').style.display = 'flex';
+                nextVerse();
+            }
         }
 
         function goHome() {
             document.getElementById('main-app').style.display = 'none';
+            document.getElementById('all-verses-view').style.display = 'none'; // 전체보기 화면도 숨김
             document.getElementById('mode-selection').style.display = 'flex';
+        }
+
+        // 💡 모든 구절 카드를 화면에 그려주는 함수
+        function renderAllVerses() {
+            const container = document.getElementById('verses-list');
+            container.innerHTML = ""; // 초기화
+            
+            if (bibleDB.length === 0) {
+                container.innerHTML = "<p style='text-align:center; color:#999; margin-top:30px;'>등록된 구절이 없습니다.</p>";
+                return;
+            }
+
+            bibleDB.forEach((verse, index) => {
+                // 개별 카드 박스 생성
+                const item = document.createElement('div');
+                item.className = 'verse-item';
+                
+                // 장절 정보 (예: 1. 창세기 1:1)
+                const ref = document.createElement('div');
+                ref.className = 'verse-item-ref';
+                ref.innerText = `${index + 1}. ${verse.reference}`;
+                
+                // 본문 정보
+                const text = document.createElement('div');
+                text.className = 'verse-item-text';
+                text.innerText = verse.text;
+                
+                item.appendChild(ref);
+                item.appendChild(text);
+                container.appendChild(item);
+            });
         }
 
         function nextVerse() {
