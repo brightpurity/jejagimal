@@ -44,7 +44,7 @@
             color: #555;
         }
 
-        /* 💡 수정: 학습 화면 전체를 감싸는 영역 (처음엔 완전히 안 보이게 처리) */
+        /* 학습 화면 전체를 감싸는 영역 */
         #main-app { 
             width: 100%;
             max-width: 600px;
@@ -59,7 +59,7 @@
             display: flex;
             gap: 10px;
             width: 100%;
-            margin-bottom: 15px;
+            margin-bottom: 10px; /* 안내 문구와의 간격을 위해 살짝 조정 */
         }
 
         button { 
@@ -73,14 +73,12 @@
             font-weight: bold; 
         }
         
-        /* 모드 선택 버튼 전용 스타일 */
         #mode-selection button {
             width: 100%;
         }
         
         button:hover { background: #0056b3; }
         
-        /* 컨트롤 전용 버튼 스타일 */
         .controls button {
             flex: 1;
         }
@@ -88,6 +86,14 @@
             background: #6c757d;
         }
         button.btn-home:hover { background: #5a6268; }
+
+        /* 💡 수정: 안내 메시지가 버튼과 박스 사이에 예쁘게 위치하도록 여백 조정 */
+        .hint-text { 
+            color: #aaa; 
+            margin-bottom: 15px; 
+            font-size: 13px; 
+            word-break: keep-all; 
+        }
 
         /* 본문 암기 박스 스타일 */
         #verse-box { 
@@ -134,32 +140,36 @@
         .word.show { display: inline; }
         
         #loading { font-size: 18px; color: #666; margin: auto; }
-        .hint-text { color: #aaa; margin-top: 12px; font-size: 13px; word-break: keep-all; }
     </style>
 </head>
 <body>
 
     <h1>장충교회 제자훈련 기말시험</h1>
 
+    <!-- 로딩 화면 -->
     <div id="loading">스프레드시트에서 성경 구절을 불러오는 중...</div>
 
+    <!-- 1. 최초 모드 선택 화면 -->
     <div id="mode-selection" style="display: none;">
         <h2>학습 모드를 선택하세요</h2>
         <button onclick="startApp('sequential')">🔁 순서대로 외우기</button>
         <button onclick="startApp('random')">🔀 무작위로 외우기</button>
     </div>
 
+    <!-- 2. 실제 암기 학습 화면 -->
     <div id="main-app" style="display: none;">
         <div class="controls">
             <button class="btn-home" onclick="goHome()">🏠 처음으로</button>
             <button onclick="nextVerse()">다음 구절 ➡️</button>
         </div>
 
+        <!-- 💡 위치 변경: 버튼 박스와 아래 흰 박스 사이로 안내 메시지 이동 -->
+        <p class="hint-text">화면(흰 박스)을 클릭하면 다음 단어가 하나씩 나옵니다.</p>
+
         <div id="verse-box" onclick="showNextWord()">
             <div id="info"></div>
             <div id="text-container"></div>
         </div>
-        <p class="hint-text">화면(흰 박스)을 클릭하면 다음 단어가 하나씩 나옵니다.</p>
     </div>
 
     <script>
@@ -209,7 +219,6 @@
             currentMode = mode;
             sequentialIndex = 0;
 
-            // 💡 수정: 모드 선택 화면을 완전히 끄고 학습 화면만 켭니다.
             document.getElementById('mode-selection').style.display = 'none';
             document.getElementById('main-app').style.display = 'flex';
 
@@ -217,7 +226,6 @@
         }
 
         function goHome() {
-            // 💡 수정: 학습 화면을 완전히 끄고 다시 모드 선택 화면을 켭니다.
             document.getElementById('main-app').style.display = 'none';
             document.getElementById('mode-selection').style.display = 'flex';
         }
