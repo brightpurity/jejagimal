@@ -25,35 +25,6 @@
             word-break: keep-all; 
         }
 
-        /* 상단 컨트롤 영역 */
-        .controls {
-            display: flex;
-            gap: 10px;
-            width: 100%;
-            max-width: 600px;
-            margin-bottom: 15px;
-            align-self: center;
-        }
-
-        button { 
-            flex: 1;
-            padding: 12px 10px; 
-            font-size: 16px; 
-            cursor: pointer; 
-            border-radius: 5px; 
-            border: none; 
-            background: #007bff; 
-            color: white; 
-            font-weight: bold; 
-        }
-        button:hover { background: #0056b3; }
-        
-        /* 홈으로 가는 버튼 스타일 */
-        button.btn-home {
-            background: #6c757d;
-        }
-        button.btn-home:hover { background: #5a6268; }
-
         /* 최초 모드 선택 화면 스타일 */
         #mode-selection {
             margin: auto;
@@ -73,13 +44,56 @@
             color: #555;
         }
 
+        /* 💡 수정: 학습 화면 전체를 감싸는 영역 (처음엔 완전히 안 보이게 처리) */
+        #main-app { 
+            width: 100%;
+            max-width: 600px;
+            margin: 0 auto;
+            flex: 1; 
+            display: flex; 
+            flex-direction: column;
+        }
+
+        /* 상단 컨트롤 영역 */
+        .controls {
+            display: flex;
+            gap: 10px;
+            width: 100%;
+            margin-bottom: 15px;
+        }
+
+        button { 
+            padding: 12px 10px; 
+            font-size: 16px; 
+            cursor: pointer; 
+            border-radius: 5px; 
+            border: none; 
+            background: #007bff; 
+            color: white; 
+            font-weight: bold; 
+        }
+        
+        /* 모드 선택 버튼 전용 스타일 */
+        #mode-selection button {
+            width: 100%;
+        }
+        
+        button:hover { background: #0056b3; }
+        
+        /* 컨트롤 전용 버튼 스타일 */
+        .controls button {
+            flex: 1;
+        }
+        button.btn-home {
+            background: #6c757d;
+        }
+        button.btn-home:hover { background: #5a6268; }
+
         /* 본문 암기 박스 스타일 */
         #verse-box { 
-            margin: 0 auto;
-            padding: 30px 20px; 
             width: 100%;
-            max-width: 600px; 
             flex: 1; 
+            padding: 30px 20px; 
             background: white; 
             border-radius: 12px; 
             box-shadow: 0 4px 10px rgba(0,0,0,0.08); 
@@ -119,7 +133,7 @@
         }
         .word.show { display: inline; }
         
-        #loading { font-size: 18px; color: #666; margin-top: 50px; }
+        #loading { font-size: 18px; color: #666; margin: auto; }
         .hint-text { color: #aaa; margin-top: 12px; font-size: 13px; word-break: keep-all; }
     </style>
 </head>
@@ -127,18 +141,15 @@
 
     <h1>장충교회 제자훈련 기말시험</h1>
 
-    <!-- 로딩 화면 -->
     <div id="loading">스프레드시트에서 성경 구절을 불러오는 중...</div>
 
-    <!-- 1. 최초 모드 선택 화면 (처음엔 숨겨둠) -->
     <div id="mode-selection" style="display: none;">
         <h2>학습 모드를 선택하세요</h2>
         <button onclick="startApp('sequential')">🔁 순서대로 외우기</button>
         <button onclick="startApp('random')">🔀 무작위로 외우기</button>
     </div>
 
-    <!-- 2. 실제 암기 학습 화면 (처음엔 숨겨둠) -->
-    <div id="main-app" style="display: none; flex: 1; display: flex; flex-direction: column;">
+    <div id="main-app" style="display: none;">
         <div class="controls">
             <button class="btn-home" onclick="goHome()">🏠 처음으로</button>
             <button onclick="nextVerse()">다음 구절 ➡️</button>
@@ -158,9 +169,8 @@
         let currentWords = [];
         let currentWordIndex = 0;
         
-        // 모드 및 순서 관리를 위한 변수
-        let currentMode = 'random'; // 'sequential' 또는 'random'
-        let sequentialIndex = 0; // 순서대로 모드일 때 현재 몇 번째 구절인지 기억
+        let currentMode = 'random';
+        let sequentialIndex = 0;
 
         async function loadBibleData() {
             try {
@@ -169,7 +179,6 @@
                 
                 bibleDB = parseCSV(csvText);
                 
-                // 로딩 완료 후 모드 선택 화면 띄우기
                 document.getElementById('loading').style.display = 'none';
                 document.getElementById('mode-selection').style.display = 'flex';
             } catch (error) {
@@ -196,22 +205,19 @@
             return result;
         }
 
-        // 사용자가 모드를 선택했을 때 실행되는 함수
         function startApp(mode) {
             currentMode = mode;
-            sequentialIndex = 0; // 순서대로 모드 시작 시 인덱스 초기화
+            sequentialIndex = 0;
 
-            // 화면 전환
+            // 💡 수정: 모드 선택 화면을 완전히 끄고 학습 화면만 켭니다.
             document.getElementById('mode-selection').style.display = 'none';
-            document.getElementById('main-app').style.style = 'flex'; // 구조 유지를 위해 스크립트로 제어
             document.getElementById('main-app').style.display = 'flex';
 
-            // 첫 구절 가져오기
             nextVerse();
         }
 
-        // 다시 모드 선택 화면으로 돌아가는 함수
         function goHome() {
+            // 💡 수정: 학습 화면을 완전히 끄고 다시 모드 선택 화면을 켭니다.
             document.getElementById('main-app').style.display = 'none';
             document.getElementById('mode-selection').style.display = 'flex';
         }
@@ -222,20 +228,14 @@
             let selectedVerse;
 
             if (currentMode === 'random') {
-                // 1) 무작위 모드: 랜덤 추출
                 selectedVerse = bibleDB[Math.floor(Math.random() * bibleDB.length)];
             } else {
-                // 2) 순서대로 모드: 차례대로 추출
                 selectedVerse = bibleDB[sequentialIndex];
-                
-                // 다음 구절을 위해 인덱스 1 증가 (끝까지 가면 다시 0으로 돌림)
                 sequentialIndex = (sequentialIndex + 1) % bibleDB.length;
             }
             
-            // 장절 표시
             document.getElementById('info').innerText = selectedVerse.reference;
             
-            // 본문 쪼개기
             currentWords = selectedVerse.text.split(" ");
             currentWordIndex = 0;
 
