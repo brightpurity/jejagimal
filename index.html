@@ -212,10 +212,12 @@
         .result-text-box { font-size: 15px; margin-top: 5px; line-height: 1.5; }
         .result-label { font-weight: bold; color: #666; }
 
-        /* 단어별 색상 하이라이트 스타일 */
+        /* 단어별 색상 스타일 스타일 */
         .word-correct { color: #28a745; font-weight: bold; }
-        .word-wrong { color: #dc3545; font-weight: bold; text-decoration: underline; }
-        .word-missing { color: #dc3545; font-weight: bold; opacity: 0.5; text-decoration: line-through; }
+        /* 💡 변경 1: 틀린 단어는 빨간색으로만 표시하고 밑줄(text-decoration) 삭제 */
+        .word-wrong { color: #dc3545; font-weight: bold; }
+        /* 💡 변경 2: 누락된 단어는 정답보다 진한 초록색(#0f5132)으로 쓰고 밑줄 추가 */
+        .word-missing { color: #0f5132; font-weight: bold; text-decoration: underline; }
 
         #loading { font-size: 18px; color: #666; margin: auto; }
     </style>
@@ -224,7 +226,6 @@
 
     <div id="loading">데이터를 불러오는 중...</div>
 
-    <!-- 1. 최초 모드 선택 화면 -->
     <div id="mode-selection" style="display: none;">
         <h1>장충교회 제자훈련 기말시험</h1>
         <h2>학습 모드를 선택하세요</h2>
@@ -236,7 +237,6 @@
         <button class="btn-exam" onclick="startApp('exam')">📝 모의고사 응시하기</button>
     </div>
 
-    <!-- 2. 실제 암기 학습 화면 -->
     <div id="main-app" style="display: none;">
         <div id="app-title" class="view-title"></div>
         <div class="controls">
@@ -251,7 +251,6 @@
         </div>
     </div>
 
-    <!-- 3. 모든 구절 나열 화면 -->
     <div id="all-verses-view" style="display: none;">
         <div class="view-title">모든 구절 보기</div>
         <div class="controls">
@@ -260,7 +259,6 @@
         <div id="verses-list"></div>
     </div>
 
-    <!-- 4. 모의고사 응시 화면 -->
     <div id="exam-view" style="display: none;">
         <div class="view-title">📝 주관식 모의고사 (10문항)</div>
         <div class="controls">
@@ -272,7 +270,6 @@
         <button class="btn-all" style="padding:15px; font-size:18px; margin-bottom:40px;" onclick="gradeExam()">💯 채점하기</button>
     </div>
 
-    <!-- 5. 모의고사 결과 화면 -->
     <div id="exam-result-view" style="display: none;">
         <div class="view-title">💯 모의고사 채점 결과</div>
         
@@ -435,17 +432,14 @@
             return text.replace(/[\s\.\,\?\!\'\"“”‘’]/g, "");
         }
 
-        // 💡 5번 피드백 반영: 최장 공통 부분 수열(LCS) 기반의 서열 추적 얼라인먼트 매칭 함수
         function buildAnalyzedHTML(originalText, userText) {
             const origWords = originalText.split(/\s+/);
             const userWords = userText.split(/\s+/);
             const m = origWords.length;
             const n = userWords.length;
             
-            // 2차원 DP 배열 생성 및 초기화
             const dp = Array.from({ length: m + 1 }, () => Array(n + 1).fill(0));
             
-            // 공백/기호 제외한 순수 알맹이 글자 기준 매칭 카운팅 계산
             for (let i = 1; i <= m; i++) {
                 for (let j = 1; j <= n; j++) {
                     if (cleanText(origWords[i - 1]) === cleanText(userWords[j - 1])) {
@@ -456,27 +450,25 @@
                 }
             }
             
-            // 역추적(Backtracking) 알고리즘을 통한 완벽 매칭 패스 복원
             let i = m, j = n;
             const htmlChunks = [];
             
             while (i > 0 || j > 0) {
                 if (i > 0 && j > 0 && cleanText(origWords[i - 1]) === cleanText(userWords[j - 1])) {
-                    // 1. 단어가 완벽히 일치하는 구간 -> 초록색 처리
+                    // 1. 정상 정답 단어 -> 연한 초록색 처리
                     htmlChunks.push(`<span class="word-correct">${userWords[j - 1]}</span>`);
                     i--; j--;
                 } else if (j > 0 && (i === 0 || dp[i][j - 1] >= dp[i - 1][j])) {
-                    // 2. 사용자가 임의로 추가했거나 잘못 적어 매칭되지 않는 단어 -> 빨간색 밑줄 처리
+                    // 2. 틀린 단어 (오타 혹은 초과 입력) -> 빨간색 (밑줄 없음)
                     htmlChunks.push(`<span class="word-wrong">${userWords[j - 1]}</span>`);
                     j--;
                 } else if (i > 0 && (j === 0 || dp[i][j - 1] < dp[i - 1][j])) {
-                    // 3. 사용자가 적지 않고 통째로 빼먹은 정답 단어 -> 반투명 빨간 취소선 처리
-                    htmlChunks.push(`<span class="word-missing">(${origWords[i - 1]} 누락)</span>`);
+                    // 3. 💡 피드백 반영: 빠뜨린 정답 단어 -> 진한 초록색(#0f5132) + 밑줄 처리 (기호/설명 제거)
+                    htmlChunks.push(`<span class="word-missing">${origWords[i - 1]}</span>`);
                     i--;
                 }
             }
             
-            // 뒤에서부터 역추적했으므로 올바른 순서로 다시 뒤집어서 결합
             return htmlChunks.reverse().join(" ");
         }
 
