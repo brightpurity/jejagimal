@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>성경 암기 도우미 (스프레드시트 연동)</title>
+    <style>
+        body { font-family: sans-serif; text-align: center; padding: 50px; background-color: #f9f9f9; }
+        #verse-box { margin: 40px auto; padding: 30px; max-width: 600px; background: white; border-radius: 10px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); cursor: pointer; min-height: 150px; display: flex; flex-direction: column; justify-content: center; align-items: center; }
+        .word { display: none; font-size: 24px; margin-right: 8px; line-height: 1.8; word-break: keep-all; }
+        .word.show { display: inline; }
+        #info { font-size: 18px; color: #666; font-weight: bold; margin-bottom: 20px; }
+        button { padding: 10px 20px; font-size: 16px; cursor: pointer; border-radius: 5px; border: none; background: #007bff; color: white; font-weight: bold; }
+        button:hover { background: #0056b3; }
+        #loading { font-size: 20px; color: #666; }
+        .hint-text { color: #999; margin-top: 15px; font-size: 14px; }
+    </style>
+</head>
+<body>
+
+    <h1>📖 성경 암기 연습</h1>
+    <button onclick="nextVerse()">다음 구절</button>
+
+    <div id="verse-box" onclick="showNextWord()">
+        <div id="loading">스프레드시트에서 성경 구절을 불러오는 중...</div>
+        <div id="info" style="display:none;"></div>
+        <div id="text-container"></div>
+    </div>
+    <p class="hint-text">화면(흰 박스)을 클릭하면 다음 단어가 하나씩 나옵니다.</p>
+
+    <script>
+        // 보내주신 구글 스프레드시트 CSV 웹 게시 URL
+        const csvUrl = "https://docs.google.com/spreadsheets/d/e/2PACX-1vTGe7VnD_JygmgPQRQqGFt6kyz9B31y9W9071YsQBHxhr_xqIvc_9p5d9HVSlI_SizijuoMkNE62noL/pub?output=csv";
+        
+        let bibleDB = [];
+        let currentWords = [];
+        let currentWordIndex = 0;
+
+        // 1. 웹페이지가 열리면 자동으로 스프레드시트 데이터를 로딩합니다.
+        async function loadBibleData() {
+            try {
+                const response = await fetch(csvUrl);
+                const csvText = await response.text();
+                
+                // CSV 데이터를 줄 단위로 분석하여 배열로 변환
+                bibleDB = parseCSV(csvText);
+                
+                // 로딩 메시지 숨기기
+                document.getElementById('loading').style.display = 'none';
+                document.getElementById('info').style.display = 'block';
+                
+                // 데이터 로딩 완료 후 첫 구절 띄우기
+                nextVerse();
+            } catch (error) {
+                console.error("데이터를 불러오는 중 오류 발생:", error);
+                document.getElementById('loading').innerText = "스프레드시트 데이터를 불러오지 못했습니다. URL이나 공유 설정을 확인해 주세요.";
+            }
+        }
+
+        // 2. 간단한 CSV 파서 (첫 줄의 reference, text 헤더를 제외하고 객체 배열로 변환)
+        function parseCSV(text) {
+            const lines = text.split("\n");
+            const result = [];
+            
+            // i = 1 부터 시작하여 헤더(A1, B1)는 건너뜁니다.
+            for (let i = 1; i < lines.length; i++) {
+                if (!lines[i].trim()) continue; // 빈 줄 패스
+                
+                // 큰따옴표가 포함된 구절을 안전하게 나누기 위한 로직
+                const parts = lines[i].split(",");
+                if (parts.length >= 2) {
+                    const reference = parts[0].replace(/"/g, "").trim();
+                    // 본문에 쉼표(,)가 있을 경우를 대비해 첫 번째 쉼표 이후는 전부 text로 합침
+                    const text = parts.slice(1).join(",").replace(/"/g, "").trim(); 
+                    
+                    result.push({ reference, text });
+                }
+            }
+            return result;
+        }
+
+        // 3. 다음 구절을 랜덤으로 가져오는 함수
+        function nextVerse() {
+            if (bibleDB.length === 0) return;
+
+            // 랜덤으로 구절 선택
+            const randomVerse = bibleDB[Math.floor(Math.random() * bibleDB.length)];
+            
+            // 장절 표시
+            document.getElementById('info').innerText = randomVerse.reference;
+            
+            // 본문을 띄어쓰기 단위로 쪼개기
+            currentWords = randomVerse.text.split(" ");
+            currentWordIndex = 0;
+
+            // 화면 초기화 및 단어들을 숨겨진 상태로 생성
+            const container = document.getElementById('text-container');
+            container.innerHTML = "";
+            
+            currentWords.forEach(word => {
+                const span = document.createElement('span');
+                span.innerText = word;
+                span.className = 'word';
+                container.appendChild(span);
+            });
+        }
+
+        // 4. 클릭 시 다음 단어를 보여주는 함수
+        function showNextWord() {
+            const spans = document.querySelectorAll('.word');
+            if (currentWordIndex < spans.length) {
+                spans[currentWordIndex].classList.add('show');
+                currentWordIndex++;
+            }
+        }
+
+        // 페이지 로드 시 실행
+        loadBibleData();
+    </script>
+</body>
+</html>
