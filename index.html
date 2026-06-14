@@ -98,7 +98,6 @@
         button.btn-prev { background: #17a2b8; }
         button.btn-prev:hover { background: #138496; }
 
-        /* 💡 초기화 버튼 전용 차분한 오렌지 브라운 컬러 디자인 (처음으로 버튼과 구분됨) */
         button.btn-reset { background: #d97706; }
         button.btn-reset:hover { background: #b45309; }
 
@@ -107,6 +106,30 @@
             margin-bottom: 15px; 
             font-size: 13px; 
             word-break: keep-all; 
+        }
+
+        /* 💡 1) 헤더 고정용 스티키 스타일 정의 */
+        .sticky-header {
+            position: sticky;
+            top: -20px; /* body의 padding-top(20px)을 상쇄하여 최상단에 완전 밀착 */
+            background-color: #f9f9f9;
+            z-index: 100;
+            padding-top: 20px;
+            padding-bottom: 12px;
+            border-bottom: 1px solid #e5e7eb;
+            margin-bottom: 20px;
+        }
+
+        /* 💡 2) 암기 완료 카운트 배지 스타일 정의 */
+        .count-badge {
+            font-size: 14px;
+            font-weight: bold;
+            color: #218838;
+            background-color: #e6f4ea;
+            padding: 4px 12px;
+            border-radius: 15px;
+            display: inline-block;
+            margin-top: 4px;
         }
 
         #verse-box { 
@@ -267,22 +290,27 @@
     </div>
 
     <div id="all-verses-view" style="display: none;">
-        <div class="view-title">모든 구절 보기</div>
-        <div class="controls">
-            <button class="btn-home" onclick="goHome()">🏠 처음으로</button>
-            <button class="btn-all" onclick="saveMemorized()">💾 저장</button>
-            <button class="btn-reset" onclick="resetMemorized()">🔄 초기화</button>
+        <div class="sticky-header">
+            <div class="view-title">모든 구절 보기</div>
+            <div class="controls">
+                <button class="btn-home" onclick="goHome()">🏠 처음으로</button>
+                <button class="btn-all" onclick="saveMemorized()">💾 저장</button>
+                <button class="btn-reset" onclick="resetMemorized()">🔄 초기화</button>
+            </div>
+            <p class="hint-text" style="margin-top: 5px; margin-bottom: 5px;">
+                외운 구절 체크 후 저장하면 '외우기'에 나오지 않습니다.
+            </p>
+            <div id="memorized-count" class="count-badge">0개 암기완료</div>
         </div>
-        <p class="hint-text" style="margin-top: 5px; margin-bottom: 15px;">
-            외운 구절 체크 후 저장하면 '외우기'에 나오지 않습니다.
-        </p>
         <div id="verses-list"></div>
     </div>
 
     <div id="exam-view" style="display: none;">
-        <div class="view-title">📝 주관식 모의고사 (10문항)</div>
-        <div class="controls">
-            <button class="btn-home" onclick="goHome()">🏠 포기하고 처음으로</button>
+        <div class="sticky-header">
+            <div class="view-title">📝 주관식 모의고사 (10문항)</div>
+            <div class="controls">
+                <button class="btn-home" onclick="goHome()">🏠 포기하고 처음으로</button>
+            </div>
         </div>
         
         <div id="exam-questions" class="exam-list"></div>
@@ -325,8 +353,6 @@
                 const csvText = await response.text();
                 
                 bibleDB = parseCSV(csvText);
-                
-                // 정렬 기준 유지 (숫자 변환이 가능한 경우 최우선 정렬)
                 bibleDB.sort((a, b) => a.no - b.no);
                 
                 document.getElementById('loading').style.display = 'none';
@@ -337,7 +363,6 @@
             }
         }
 
-        // 따옴표와 쉼표를 안전하게 파싱하는 향상된 CSV 스플리터
         function parseCSV(text) {
             const lines = text.split("\n");
             const result = [];
@@ -367,7 +392,7 @@
                 if (parts.length >= 4) {
                     const rawNo = parts[0].replace(/"/g, "").trim();
                     let no = parseInt(rawNo, 10);
-                    if (isNaN(no)) no = i; // 숫자 정렬용 예외 보완 키
+                    if (isNaN(no)) no = i; 
                     
                     const reference = parts[1].replace(/"/g, "").trim();
                     const verseText = parts[2].replace(/"/g, "").trim();
@@ -391,7 +416,6 @@
             } else {
                 currentMode = mode;
                 
-                // 💡 버그 해결 핵심: 완벽한 매칭을 위해 원본 문자열(rawNo) 배열로 필터링 처리
                 const memorizedList = JSON.parse(localStorage.getItem('memorized_verses') || '[]');
                 activeVerses = bibleDB.filter(verse => verse.gimal_yn === 1 && !memorizedList.includes(verse.rawNo));
 
@@ -449,12 +473,15 @@
                     const checkbox = document.createElement('input');
                     checkbox.type = 'checkbox';
                     checkbox.className = 'memorized-checkbox';
-                    // 💡 데이터 타입을 완벽하게 일치시키기 위해 rawNo 문자열 주입
                     checkbox.dataset.rawNo = verse.rawNo; 
                     checkbox.checked = memorizedList.includes(verse.rawNo);
                     checkbox.style.marginRight = '10px';
                     checkbox.style.transform = 'scale(1.2)';
                     checkbox.style.cursor = 'pointer';
+                    
+                    // 💡 체크 상태 변경 시 실시간으로 숫자가 변하도록 이벤트 주입
+                    checkbox.addEventListener('change', updateMemorizedCount);
+                    
                     ref.appendChild(checkbox);
                 }
 
@@ -473,6 +500,18 @@
 
             activeItems.forEach(v => renderItem(v, true));
             inactiveItems.forEach(v => renderItem(v, false));
+            
+            // 💡 초기 렌더링 시 암기 개수 계산기 작동
+            updateMemorizedCount();
+        }
+
+        // 💡 2) 실시간으로 체크박스 카운팅하여 화면에 반영하는 함수
+        function updateMemorizedCount() {
+            const checkedCount = document.querySelectorAll('.memorized-checkbox:checked').length;
+            const countElement = document.getElementById('memorized-count');
+            if (countElement) {
+                countElement.innerText = `${checkedCount}개 암기완료`;
+            }
         }
 
         function saveMemorized() {
@@ -481,13 +520,14 @@
 
             checkboxes.forEach(cb => {
                 if (cb.checked) {
-                    // 💡 rawNo 문자열 기반으로 식별 데이터 저장
                     memorizedList.push(cb.dataset.rawNo);
                 }
             });
 
             localStorage.setItem('memorized_verses', JSON.stringify(memorizedList));
-            alert("암기 완료 상태가 안전하게 저장되었습니다.");
+            
+            // 💡 3) 요청하신 문구로 간결하게 수정
+            alert("외운 구절이 저장되었습니다.");
         }
 
         function resetMemorized() {
@@ -496,6 +536,9 @@
                 checkboxes.forEach(cb => cb.checked = false);
                 
                 localStorage.removeItem('memorized_verses');
+                
+                // 💡 초기화 버튼 누른 후 개수 상태도 0개로 즉시 연동
+                updateMemorizedCount();
                 alert("체크 상태가 초기화되었습니다.");
             }
         }
