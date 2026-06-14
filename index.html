@@ -108,10 +108,9 @@
             word-break: keep-all; 
         }
 
-        /* 💡 1) 헤더 고정용 스티키 스타일 정의 */
         .sticky-header {
             position: sticky;
-            top: -20px; /* body의 padding-top(20px)을 상쇄하여 최상단에 완전 밀착 */
+            top: -20px; 
             background-color: #f9f9f9;
             z-index: 100;
             padding-top: 20px;
@@ -120,7 +119,6 @@
             margin-bottom: 20px;
         }
 
-        /* 💡 2) 암기 완료 카운트 배지 스타일 정의 */
         .count-badge {
             font-size: 14px;
             font-weight: bold;
@@ -307,7 +305,7 @@
 
     <div id="exam-view" style="display: none;">
         <div class="sticky-header">
-            <div class="view-title">📝 주관식 모의고사 (10문항)</div>
+            <div id="exam-title" class="view-title">📝 주관식 모의고사</div>
             <div class="controls">
                 <button class="btn-home" onclick="goHome()">🏠 포기하고 처음으로</button>
             </div>
@@ -479,7 +477,6 @@
                     checkbox.style.transform = 'scale(1.2)';
                     checkbox.style.cursor = 'pointer';
                     
-                    // 💡 체크 상태 변경 시 실시간으로 숫자가 변하도록 이벤트 주입
                     checkbox.addEventListener('change', updateMemorizedCount);
                     
                     ref.appendChild(checkbox);
@@ -501,11 +498,9 @@
             activeItems.forEach(v => renderItem(v, true));
             inactiveItems.forEach(v => renderItem(v, false));
             
-            // 💡 초기 렌더링 시 암기 개수 계산기 작동
             updateMemorizedCount();
         }
 
-        // 💡 2) 실시간으로 체크박스 카운팅하여 화면에 반영하는 함수
         function updateMemorizedCount() {
             const checkedCount = document.querySelectorAll('.memorized-checkbox:checked').length;
             const countElement = document.getElementById('memorized-count');
@@ -525,8 +520,6 @@
             });
 
             localStorage.setItem('memorized_verses', JSON.stringify(memorizedList));
-            
-            // 💡 3) 요청하신 문구로 간결하게 수정
             alert("외운 구절이 저장되었습니다.");
         }
 
@@ -537,16 +530,17 @@
                 
                 localStorage.removeItem('memorized_verses');
                 
-                // 💡 초기화 버튼 누른 후 개수 상태도 0개로 즉시 연동
                 updateMemorizedCount();
                 alert("체크 상태가 초기화되었습니다.");
             }
         }
 
+        // 💡 완전히 무작위로 기말고사 범위 구절 전량을 출제하도록 전면 수정한 로직
         function setupExam() {
             const container = document.getElementById('exam-questions');
             container.innerHTML = "";
             
+            // 1. gimal_yn 이 1인 구절만 안전하게 필터링
             const examPool = bibleDB.filter(verse => verse.gimal_yn === 1);
 
             if (examPool.length === 0) {
@@ -554,10 +548,16 @@
                 return;
             }
 
-            const shuffled = [...examPool].sort(() => 0.5 - Math.random());
-            const selected = shuffled.slice(0, Math.min(10, examPool.length));
-            examVerses = selected.sort((a, b) => a.no - b.no);
+            // 2. 10개 추출 및 번호순 재정렬 로직 제거 -> 전체 범위를 누를 때마다 100% 무작위 셔플
+            examVerses = [...examPool].sort(() => Math.random() - 0.5);
 
+            // 3. 상단 헤더 타이틀에 출제 문항 개수 실시간 표시 연동
+            const titleElement = document.getElementById('exam-title');
+            if (titleElement) {
+                titleElement.innerText = `📝 주관식 모의고사 (${examVerses.length}문항 전체)`;
+            }
+
+            // 4. 무작위 순서 그대로 시험지 UI 출력
             examVerses.forEach((verse, index) => {
                 const item = document.createElement('div');
                 item.className = 'exam-item';
