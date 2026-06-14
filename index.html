@@ -149,7 +149,6 @@
         
         #verses-list { text-align: left; }
         
-        /* 기본 활성화 성구 (초록색 테마) */
         .verse-item {
             background: white;
             padding: 20px;
@@ -171,7 +170,6 @@
             word-break: keep-all;
         }
 
-        /* 💡 추가: 비활성화 성구 (회색 테마) */
         .verse-item.inactive {
             border-left: 4px solid #999;
             background: #f4f4f4;
@@ -296,7 +294,6 @@
     <script>
         const csvUrl = "https://docs.google.com/spreadsheets/d/e/2PACX-1vTGe7VnD_JygmgPQRQqGFt6kyz9B31y9W9071YsQBHxhr_xqIvc_9p5d9HVSlI_SizijuoMkNE62noL/pub?output=csv";
         
-        // 💡 전체 데이터를 담는 원본 배열과, 시험용(gimal_yn=1) 데이터만 담는 배열 분리
         let bibleDB = [];
         let activeVerses = [];
         
@@ -318,10 +315,9 @@
                 
                 bibleDB = parseCSV(csvText);
                 
-                // 💡 컬럼 A(no)를 기준으로 1차 정렬
+                // 오름차순 정렬 (숫자 크기 기준)
                 bibleDB.sort((a, b) => a.no - b.no);
                 
-                // 💡 시험용(gimal_yn == 1) 데이터만 별도로 필터링
                 activeVerses = bibleDB.filter(verse => verse.gimal_yn === 1);
                 
                 document.getElementById('loading').style.display = 'none';
@@ -339,20 +335,19 @@
             for (let i = 1; i < lines.length; i++) {
                 if (!lines[i].trim()) continue;
                 
-                // 💡 구글 시트 특성상 줄바꿈(\r) 제거 후 쉼표 분리
                 const line = lines[i].replace(/\r/g, "");
                 const parts = line.split(",");
                 
                 if (parts.length >= 4) {
-                    // A열: no, B열: reference, C열: text, D열: gimal_yn (text 안에 쉼표가 있을 수 있으므로 slice 배열 결합)
-                    const no = parseInt(parts[0].replace(/"/g, "").trim(), 10);
+                    const rawNo = parts[0].replace(/"/g, "").trim();
+                    const no = parseInt(rawNo, 10);
                     const reference = parts[1].replace(/"/g, "").trim();
                     const gimal_yn = parseInt(parts[parts.length - 1].replace(/"/g, "").trim(), 10);
                     
-                    // 시작(2)부터 끝(마지막에서 두번째)까지를 텍스트로 묶음
                     const verseText = parts.slice(2, parts.length - 1).join(",").replace(/"/g, "").trim(); 
                     
-                    result.push({ no, reference, text: verseText, gimal_yn });
+                    // rawNo(입력된 텍스트 원본)와 no(정렬용 숫자)를 같이 저장
+                    result.push({ no, rawNo, reference, text: verseText, gimal_yn });
                 }
             }
             return result;
@@ -396,25 +391,23 @@
             window.scrollTo(0, 0); 
         }
 
-        // 💡 모든 구절 보기 로직 업데이트
         function renderAllVerses() {
             const container = document.getElementById('verses-list');
             container.innerHTML = ""; 
             
             if (bibleDB.length === 0) return;
 
-            // 1=시험범위(위쪽 배치), 0=비시험범위(아래쪽 배치) 분리 (이미 no 기준으로 정렬됨)
             const activeItems = bibleDB.filter(v => v.gimal_yn === 1);
             const inactiveItems = bibleDB.filter(v => v.gimal_yn === 0);
 
-            // 구절 렌더링 함수
             const renderItem = (verse, isActive) => {
                 const item = document.createElement('div');
                 item.className = 'verse-item' + (isActive ? '' : ' inactive');
                 
                 const ref = document.createElement('div');
                 ref.className = 'verse-item-ref';
-                ref.innerText = `No.${verse.no} | ${verse.reference}`;
+                // 💡 [No.3] 등 장식 제거 후 시트 원본 값과 성구만 출력
+                ref.innerText = `${verse.rawNo}. ${verse.reference}`;
                 
                 const text = document.createElement('div');
                 text.className = 'verse-item-text';
@@ -425,10 +418,7 @@
                 container.appendChild(item);
             };
 
-            // 활성화된 구절 먼저 출력 (초록색)
             activeItems.forEach(v => renderItem(v, true));
-            
-            // 비활성화된 구절은 이어서 출력 (회색)
             inactiveItems.forEach(v => renderItem(v, false));
         }
 
@@ -441,7 +431,6 @@
                 return;
             }
 
-            // 💡 시험용 activeVerses 안에서 무작위 10개를 뽑고, 다시 no 순서대로 정렬
             const shuffled = [...activeVerses].sort(() => 0.5 - Math.random());
             const selected = shuffled.slice(0, Math.min(10, activeVerses.length));
             examVerses = selected.sort((a, b) => a.no - b.no);
@@ -452,7 +441,8 @@
                 
                 const refDiv = document.createElement('div');
                 refDiv.className = 'exam-item-ref';
-                refDiv.innerText = `Q${index + 1}. [No.${verse.no}] ${verse.reference}`;
+                // 💡 모의고사에서도 번호 장식을 제거
+                refDiv.innerText = `Q${index + 1}. ${verse.reference}`;
                 
                 const inputWrap = document.createElement('div');
                 inputWrap.className = 'exam-input-wrap';
@@ -531,7 +521,8 @@
                 
                 const refDiv = document.createElement('div');
                 refDiv.className = 'result-ref';
-                refDiv.innerText = `Q${index + 1}. [No.${verse.no}] ${verse.reference}`;
+                // 💡 모의고사 채점 결과에서도 번호 장식을 제거
+                refDiv.innerText = `Q${index + 1}. ${verse.reference}`;
                 
                 let displayedUserResponse = "";
                 if (isCorrect) {
@@ -564,7 +555,6 @@
         }
 
         function nextVerse() {
-            // 💡 암기 모드는 activeVerses 기준으로만 작동
             if (activeVerses.length === 0) return;
 
             if (currentMode === 'random') {
@@ -600,9 +590,9 @@
         }
 
         function renderSingleVerse(index) {
-            // 💡 activeVerses 배열에서 데이터를 꺼내옴
             const verse = activeVerses[index];
-            document.getElementById('info').innerText = `[No.${verse.no}] ${verse.reference}`;
+            // 💡 외우기 화면에서도 번호 장식을 제거하고 Reference만 표시
+            document.getElementById('info').innerText = verse.reference;
             
             currentWords = verse.text.split(" ");
             currentWordIndex = 0;
