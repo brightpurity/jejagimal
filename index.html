@@ -148,6 +148,8 @@
         .word.show { display: inline; }
         
         #verses-list { text-align: left; }
+        
+        /* 기본 활성화 성구 (초록색 테마) */
         .verse-item {
             background: white;
             padding: 20px;
@@ -167,6 +169,18 @@
             color: #333;
             line-height: 1.6;
             word-break: keep-all;
+        }
+
+        /* 💡 추가: 비활성화 성구 (회색 테마) */
+        .verse-item.inactive {
+            border-left: 4px solid #999;
+            background: #f4f4f4;
+        }
+        .verse-item.inactive .verse-item-ref {
+            color: #777;
+        }
+        .verse-item.inactive .verse-item-text {
+            color: #555;
         }
 
         .exam-list { text-align: left; margin-bottom: 20px; }
@@ -212,11 +226,8 @@
         .result-text-box { font-size: 15px; margin-top: 5px; line-height: 1.5; }
         .result-label { font-weight: bold; color: #666; }
 
-        /* 단어별 색상 스타일 스타일 */
         .word-correct { color: #28a745; font-weight: bold; }
-        /* 💡 변경 1: 틀린 단어는 빨간색으로만 표시하고 밑줄(text-decoration) 삭제 */
         .word-wrong { color: #dc3545; font-weight: bold; }
-        /* 💡 변경 2: 누락된 단어는 정답보다 진한 초록색(#0f5132)으로 쓰고 밑줄 추가 */
         .word-missing { color: #0f5132; font-weight: bold; text-decoration: underline; }
 
         #loading { font-size: 18px; color: #666; margin: auto; }
@@ -285,7 +296,10 @@
     <script>
         const csvUrl = "https://docs.google.com/spreadsheets/d/e/2PACX-1vTGe7VnD_JygmgPQRQqGFt6kyz9B31y9W9071YsQBHxhr_xqIvc_9p5d9HVSlI_SizijuoMkNE62noL/pub?output=csv";
         
+        // 💡 전체 데이터를 담는 원본 배열과, 시험용(gimal_yn=1) 데이터만 담는 배열 분리
         let bibleDB = [];
+        let activeVerses = [];
+        
         let currentWords = [];
         let currentWordIndex = 0;
         
@@ -304,6 +318,12 @@
                 
                 bibleDB = parseCSV(csvText);
                 
+                // 💡 컬럼 A(no)를 기준으로 1차 정렬
+                bibleDB.sort((a, b) => a.no - b.no);
+                
+                // 💡 시험용(gimal_yn == 1) 데이터만 별도로 필터링
+                activeVerses = bibleDB.filter(verse => verse.gimal_yn === 1);
+                
                 document.getElementById('loading').style.display = 'none';
                 document.getElementById('mode-selection').style.display = 'flex';
             } catch (error) {
@@ -319,12 +339,20 @@
             for (let i = 1; i < lines.length; i++) {
                 if (!lines[i].trim()) continue;
                 
-                const parts = lines[i].split(",");
-                if (parts.length >= 2) {
-                    const reference = parts[0].replace(/"/g, "").trim();
-                    const text = parts.slice(1).join(",").replace(/"/g, "").trim(); 
+                // 💡 구글 시트 특성상 줄바꿈(\r) 제거 후 쉼표 분리
+                const line = lines[i].replace(/\r/g, "");
+                const parts = line.split(",");
+                
+                if (parts.length >= 4) {
+                    // A열: no, B열: reference, C열: text, D열: gimal_yn (text 안에 쉼표가 있을 수 있으므로 slice 배열 결합)
+                    const no = parseInt(parts[0].replace(/"/g, "").trim(), 10);
+                    const reference = parts[1].replace(/"/g, "").trim();
+                    const gimal_yn = parseInt(parts[parts.length - 1].replace(/"/g, "").trim(), 10);
                     
-                    result.push({ reference, text, originalIndex: i - 1 });
+                    // 시작(2)부터 끝(마지막에서 두번째)까지를 텍스트로 묶음
+                    const verseText = parts.slice(2, parts.length - 1).join(",").replace(/"/g, "").trim(); 
+                    
+                    result.push({ no, reference, text: verseText, gimal_yn });
                 }
             }
             return result;
@@ -368,19 +396,25 @@
             window.scrollTo(0, 0); 
         }
 
+        // 💡 모든 구절 보기 로직 업데이트
         function renderAllVerses() {
             const container = document.getElementById('verses-list');
             container.innerHTML = ""; 
             
             if (bibleDB.length === 0) return;
 
-            bibleDB.forEach((verse, index) => {
+            // 1=시험범위(위쪽 배치), 0=비시험범위(아래쪽 배치) 분리 (이미 no 기준으로 정렬됨)
+            const activeItems = bibleDB.filter(v => v.gimal_yn === 1);
+            const inactiveItems = bibleDB.filter(v => v.gimal_yn === 0);
+
+            // 구절 렌더링 함수
+            const renderItem = (verse, isActive) => {
                 const item = document.createElement('div');
-                item.className = 'verse-item';
+                item.className = 'verse-item' + (isActive ? '' : ' inactive');
                 
                 const ref = document.createElement('div');
                 ref.className = 'verse-item-ref';
-                ref.innerText = `${index + 1}. ${verse.reference}`;
+                ref.innerText = `No.${verse.no} | ${verse.reference}`;
                 
                 const text = document.createElement('div');
                 text.className = 'verse-item-text';
@@ -389,21 +423,28 @@
                 item.appendChild(ref);
                 item.appendChild(text);
                 container.appendChild(item);
-            });
+            };
+
+            // 활성화된 구절 먼저 출력 (초록색)
+            activeItems.forEach(v => renderItem(v, true));
+            
+            // 비활성화된 구절은 이어서 출력 (회색)
+            inactiveItems.forEach(v => renderItem(v, false));
         }
 
         function setupExam() {
             const container = document.getElementById('exam-questions');
             container.innerHTML = "";
             
-            if (bibleDB.length === 0) {
-                container.innerHTML = "<p>등록된 성경 구절 데이터가 없습니다.</p>";
+            if (activeVerses.length === 0) {
+                container.innerHTML = "<p>등록된 기말고사 범위 데이터가 없습니다.</p>";
                 return;
             }
 
-            const shuffled = [...bibleDB].sort(() => 0.5 - Math.random());
-            const selected = shuffled.slice(0, Math.min(10, bibleDB.length));
-            examVerses = selected.sort((a, b) => a.originalIndex - b.originalIndex);
+            // 💡 시험용 activeVerses 안에서 무작위 10개를 뽑고, 다시 no 순서대로 정렬
+            const shuffled = [...activeVerses].sort(() => 0.5 - Math.random());
+            const selected = shuffled.slice(0, Math.min(10, activeVerses.length));
+            examVerses = selected.sort((a, b) => a.no - b.no);
 
             examVerses.forEach((verse, index) => {
                 const item = document.createElement('div');
@@ -411,7 +452,7 @@
                 
                 const refDiv = document.createElement('div');
                 refDiv.className = 'exam-item-ref';
-                refDiv.innerText = `Q${index + 1}. ${verse.reference}`;
+                refDiv.innerText = `Q${index + 1}. [No.${verse.no}] ${verse.reference}`;
                 
                 const inputWrap = document.createElement('div');
                 inputWrap.className = 'exam-input-wrap';
@@ -455,15 +496,12 @@
             
             while (i > 0 || j > 0) {
                 if (i > 0 && j > 0 && cleanText(origWords[i - 1]) === cleanText(userWords[j - 1])) {
-                    // 1. 정상 정답 단어 -> 연한 초록색 처리
                     htmlChunks.push(`<span class="word-correct">${userWords[j - 1]}</span>`);
                     i--; j--;
                 } else if (j > 0 && (i === 0 || dp[i][j - 1] >= dp[i - 1][j])) {
-                    // 2. 틀린 단어 (오타 혹은 초과 입력) -> 빨간색 (밑줄 없음)
                     htmlChunks.push(`<span class="word-wrong">${userWords[j - 1]}</span>`);
                     j--;
                 } else if (i > 0 && (j === 0 || dp[i][j - 1] < dp[i - 1][j])) {
-                    // 3. 💡 피드백 반영: 빠뜨린 정답 단어 -> 진한 초록색(#0f5132) + 밑줄 처리 (기호/설명 제거)
                     htmlChunks.push(`<span class="word-missing">${origWords[i - 1]}</span>`);
                     i--;
                 }
@@ -493,7 +531,7 @@
                 
                 const refDiv = document.createElement('div');
                 refDiv.className = 'result-ref';
-                refDiv.innerText = `Q${index + 1}. ${verse.reference}`;
+                refDiv.innerText = `Q${index + 1}. [No.${verse.no}] ${verse.reference}`;
                 
                 let displayedUserResponse = "";
                 if (isCorrect) {
@@ -526,26 +564,27 @@
         }
 
         function nextVerse() {
-            if (bibleDB.length === 0) return;
+            // 💡 암기 모드는 activeVerses 기준으로만 작동
+            if (activeVerses.length === 0) return;
 
             if (currentMode === 'random') {
                 if (randomPointer < randomHistory.length - 1) {
                     randomPointer++;
                     renderSingleVerse(randomHistory[randomPointer]);
                 } else {
-                    const newIdx = Math.floor(Math.random() * bibleDB.length);
+                    const newIdx = Math.floor(Math.random() * activeVerses.length);
                     randomHistory.push(newIdx);
                     randomPointer++;
                     renderSingleVerse(newIdx);
                 }
             } else {
-                currentVerseIndex = (currentVerseIndex + 1) % bibleDB.length;
+                currentVerseIndex = (currentVerseIndex + 1) % activeVerses.length;
                 renderSingleVerse(currentVerseIndex);
             }
         }
 
         function prevVerse() {
-            if (bibleDB.length === 0) return;
+            if (activeVerses.length === 0) return;
 
             if (currentMode === 'random') {
                 if (randomPointer > 0) {
@@ -555,14 +594,15 @@
                     alert("첫 번째 구절입니다."); 
                 }
             } else {
-                currentVerseIndex = (currentVerseIndex - 1 + bibleDB.length) % bibleDB.length;
+                currentVerseIndex = (currentVerseIndex - 1 + activeVerses.length) % activeVerses.length;
                 renderSingleVerse(currentVerseIndex);
             }
         }
 
         function renderSingleVerse(index) {
-            const verse = bibleDB[index];
-            document.getElementById('info').innerText = verse.reference;
+            // 💡 activeVerses 배열에서 데이터를 꺼내옴
+            const verse = activeVerses[index];
+            document.getElementById('info').innerText = `[No.${verse.no}] ${verse.reference}`;
             
             currentWords = verse.text.split(" ");
             currentWordIndex = 0;
