@@ -98,7 +98,7 @@
         button.btn-prev { background: #17a2b8; }
         button.btn-prev:hover { background: #138496; }
 
-        /* 초기화 버튼 전용 차분한 오렌지/브라운 색상 상속 */
+        /* 💡 초기화 버튼 전용 차분한 오렌지 브라운 컬러 디자인 (처음으로 버튼과 구분됨) */
         button.btn-reset { background: #d97706; }
         button.btn-reset:hover { background: #b45309; }
 
@@ -326,6 +326,7 @@
                 
                 bibleDB = parseCSV(csvText);
                 
+                // 정렬 기준 유지 (숫자 변환이 가능한 경우 최우선 정렬)
                 bibleDB.sort((a, b) => a.no - b.no);
                 
                 document.getElementById('loading').style.display = 'none';
@@ -336,6 +337,7 @@
             }
         }
 
+        // 따옴표와 쉼표를 안전하게 파싱하는 향상된 CSV 스플리터
         function parseCSV(text) {
             const lines = text.split("\n");
             const result = [];
@@ -344,15 +346,32 @@
                 if (!lines[i].trim()) continue;
                 
                 const line = lines[i].replace(/\r/g, "");
-                const parts = line.split(",");
+                
+                const parts = [];
+                let insideQuote = false;
+                let currentPart = "";
+                
+                for (let j = 0; j < line.length; j++) {
+                    const char = line[j];
+                    if (char === '"') {
+                        insideQuote = !insideQuote;
+                    } else if (char === ',' && !insideQuote) {
+                        parts.push(currentPart.trim());
+                        currentPart = "";
+                    } else {
+                        currentPart += char;
+                    }
+                }
+                parts.push(currentPart.trim());
                 
                 if (parts.length >= 4) {
                     const rawNo = parts[0].replace(/"/g, "").trim();
-                    const no = parseInt(rawNo, 10);
-                    const reference = parts[1].replace(/"/g, "").trim();
-                    const gimal_yn = parseInt(parts[parts.length - 1].replace(/"/g, "").trim(), 10);
+                    let no = parseInt(rawNo, 10);
+                    if (isNaN(no)) no = i; // 숫자 정렬용 예외 보완 키
                     
-                    const verseText = parts.slice(2, parts.length - 1).join(",").replace(/"/g, "").trim(); 
+                    const reference = parts[1].replace(/"/g, "").trim();
+                    const verseText = parts[2].replace(/"/g, "").trim();
+                    const gimal_yn = parseInt(parts[3].replace(/"/g, "").trim(), 10) || 0;
                     
                     result.push({ no, rawNo, reference, text: verseText, gimal_yn });
                 }
@@ -372,11 +391,12 @@
             } else {
                 currentMode = mode;
                 
+                // 💡 버그 해결 핵심: 완벽한 매칭을 위해 원본 문자열(rawNo) 배열로 필터링 처리
                 const memorizedList = JSON.parse(localStorage.getItem('memorized_verses') || '[]');
-                activeVerses = bibleDB.filter(verse => verse.gimal_yn === 1 && !memorizedList.includes(verse.no));
+                activeVerses = bibleDB.filter(verse => verse.gimal_yn === 1 && !memorizedList.includes(verse.rawNo));
 
                 if (activeVerses.length === 0) {
-                    alert("기말고사 범위의 모든 구절을 암기하셨습니다! '모든 구절 보기'에서 체크를 해제하거나 초기화해 주세요.");
+                    alert("기말고사 범위 중 남은 암기 구절이 없습니다! '모든 구절 보기'에서 체크를 수정하거나 초기화해 주세요.");
                     goHome();
                     return;
                 }
@@ -429,8 +449,9 @@
                     const checkbox = document.createElement('input');
                     checkbox.type = 'checkbox';
                     checkbox.className = 'memorized-checkbox';
-                    checkbox.dataset.no = verse.no; 
-                    checkbox.checked = memorizedList.includes(verse.no);
+                    // 💡 데이터 타입을 완벽하게 일치시키기 위해 rawNo 문자열 주입
+                    checkbox.dataset.rawNo = verse.rawNo; 
+                    checkbox.checked = memorizedList.includes(verse.rawNo);
                     checkbox.style.marginRight = '10px';
                     checkbox.style.transform = 'scale(1.2)';
                     checkbox.style.cursor = 'pointer';
@@ -460,7 +481,8 @@
 
             checkboxes.forEach(cb => {
                 if (cb.checked) {
-                    memorizedList.push(parseInt(cb.dataset.no, 10));
+                    // 💡 rawNo 문자열 기반으로 식별 데이터 저장
+                    memorizedList.push(cb.dataset.rawNo);
                 }
             });
 
@@ -558,8 +580,8 @@
         }
 
         function gradeExam() {
-            const resultsContainer = document.getElementById('exam-results');
-            resultsContainer.innerHTML = "";
+            const MountContainer = document.getElementById('exam-results');
+            MountContainer.innerHTML = "";
             
             let score = 0;
 
@@ -599,7 +621,7 @@
                 resultCard.appendChild(statusDiv);
                 resultCard.appendChild(refDiv);
                 resultCard.appendChild(textBox);
-                resultsContainer.appendChild(resultCard);
+                MountContainer.appendChild(resultCard);
             });
 
             document.getElementById('score-display').innerText = `🎯 내 점수: ${score} / ${examVerses.length} 문항 맞춤 (${Math.round((score/examVerses.length)*100)}점)`;
