@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     
     <meta property="og:title" content="장충교회 제자훈련 기말시험">
-    <meta property="og:description" content="구글 스프레드시트와 연동된 성경 암기 연습 프로그램">
+    <meta property="og:description" content="성경 암송 프로그램 (Gemini 바이브코딩)">
     <meta property="og:type" content="website">
 
     <title>장충교회 제자훈련 기말시험</title>
@@ -97,6 +97,10 @@
         
         button.btn-prev { background: #17a2b8; }
         button.btn-prev:hover { background: #138496; }
+
+        /* 초기화 버튼 전용 차분한 오렌지/브라운 색상 상속 */
+        button.btn-reset { background: #d97706; }
+        button.btn-reset:hover { background: #b45309; }
 
         .hint-text { 
             color: #aaa; 
@@ -266,11 +270,11 @@
         <div class="view-title">모든 구절 보기</div>
         <div class="controls">
             <button class="btn-home" onclick="goHome()">🏠 처음으로</button>
-            <button class="btn-all" style="background: #28a745;" onclick="saveMemorized()">💾 저장</button>
-            <button class="btn-home" style="background: #dc3545;" onclick="resetMemorized()">🔄 초기화</button>
+            <button class="btn-all" onclick="saveMemorized()">💾 저장</button>
+            <button class="btn-reset" onclick="resetMemorized()">🔄 초기화</button>
         </div>
-        <p class="hint-text" style="margin-top: 5px; margin-bottom: 15px; color: #e65100; font-weight: bold; font-size: 14px;">
-            외운 구절을 체크하고 저장하면 외우기 메뉴에서 나타나지 않습니다.
+        <p class="hint-text" style="margin-top: 5px; margin-bottom: 15px;">
+            외운 구절 체크 후 저장하면 '외우기'에 나오지 않습니다.
         </p>
         <div id="verses-list"></div>
     </div>
@@ -302,7 +306,7 @@
         const csvUrl = "https://docs.google.com/spreadsheets/d/e/2PACX-1vTGe7VnD_JygmgPQRQqGFt6kyz9B31y9W9071YsQBHxhr_xqIvc_9p5d9HVSlI_SizijuoMkNE62noL/pub?output=csv";
         
         let bibleDB = [];
-        let activeVerses = []; // 외우기 메뉴에서 활용할 (체크 제외된) 실제 활성 배열
+        let activeVerses = [];
         
         let currentWords = [];
         let currentWordIndex = 0;
@@ -322,7 +326,6 @@
                 
                 bibleDB = parseCSV(csvText);
                 
-                // 오름차순 정렬 (숫자 크기 기준)
                 bibleDB.sort((a, b) => a.no - b.no);
                 
                 document.getElementById('loading').style.display = 'none';
@@ -369,11 +372,9 @@
             } else {
                 currentMode = mode;
                 
-                // 💡 암기 완료 처리(체크박스 저장값)를 가져와서 기말 범위(gimal_yn=1) 중 미암기 성구만 필터링
                 const memorizedList = JSON.parse(localStorage.getItem('memorized_verses') || '[]');
                 activeVerses = bibleDB.filter(verse => verse.gimal_yn === 1 && !memorizedList.includes(verse.no));
 
-                // 만약 기말 범구 전체를 다 체크해서 외운 경우의 예외 처리
                 if (activeVerses.length === 0) {
                     alert("기말고사 범위의 모든 구절을 암기하셨습니다! '모든 구절 보기'에서 체크를 해제하거나 초기화해 주세요.");
                     goHome();
@@ -412,7 +413,6 @@
             
             if (bibleDB.length === 0) return;
 
-            // 로컬 스토리지에서 암기 완료된 no 목록 확보
             const memorizedList = JSON.parse(localStorage.getItem('memorized_verses') || '[]');
 
             const activeItems = bibleDB.filter(v => v.gimal_yn === 1);
@@ -425,12 +425,11 @@
                 const ref = document.createElement('div');
                 ref.className = 'verse-item-ref';
                 
-                // 💡 gimal_yn 이 1인 구절에 한해서만 체크박스 생성
                 if (isActive) {
                     const checkbox = document.createElement('input');
                     checkbox.type = 'checkbox';
                     checkbox.className = 'memorized-checkbox';
-                    checkbox.dataset.no = verse.no; // 식별자 매핑
+                    checkbox.dataset.no = verse.no; 
                     checkbox.checked = memorizedList.includes(verse.no);
                     checkbox.style.marginRight = '10px';
                     checkbox.style.transform = 'scale(1.2)';
@@ -455,7 +454,6 @@
             inactiveItems.forEach(v => renderItem(v, false));
         }
 
-        // 💡 추가기능 1: 체크박스 상태 저장 함수
         function saveMemorized() {
             const checkboxes = document.querySelectorAll('.memorized-checkbox');
             const memorizedList = [];
@@ -470,7 +468,6 @@
             alert("암기 완료 상태가 안전하게 저장되었습니다.");
         }
 
-        // 💡 추가기능 2: 체크박스 해제 및 저장소 초기화 함수
         function resetMemorized() {
             if (confirm("외운 구절 체크를 전부 해제하고 초기화하시겠습니까?")) {
                 const checkboxes = document.querySelectorAll('.memorized-checkbox');
@@ -485,7 +482,6 @@
             const container = document.getElementById('exam-questions');
             container.innerHTML = "";
             
-            // 모의고사는 외움 여부와 상관없이 gimal_yn = 1 전체 풀에서 출제합니다.
             const examPool = bibleDB.filter(verse => verse.gimal_yn === 1);
 
             if (examPool.length === 0) {
