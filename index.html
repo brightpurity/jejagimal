@@ -339,10 +339,6 @@
         
         let currentMode = 'random';
         let currentVerseIndex = -1; 
-        
-        let randomHistory = []; 
-        let randomPointer = -1; 
-
         let examVerses = [];
 
         async function loadBibleData() {
@@ -414,6 +410,7 @@
             } else {
                 currentMode = mode;
                 
+                // 💡 대상 필터링: gimal_yn 이 1이면서 체크 안 된 구절 완벽 추출
                 const memorizedList = JSON.parse(localStorage.getItem('memorized_verses') || '[]');
                 activeVerses = bibleDB.filter(verse => verse.gimal_yn === 1 && !memorizedList.includes(verse.rawNo));
 
@@ -428,11 +425,16 @@
                     titleElement.innerText = "순서대로 외우기";
                 } else if (mode === 'random') {
                     titleElement.innerText = "무작위로 외우기";
+                    
+                    // 💡 핵심 버그 수정: 진입할 때 딱 한 세트를 피셔-예이츠 알고리즘으로 완전 셔플
+                    for (let i = activeVerses.length - 1; i > 0; i--) {
+                        const j = Math.floor(Math.random() * (i + 1));
+                        [activeVerses[i], activeVerses[j]] = [activeVerses[j], activeVerses[i]];
+                    }
                 }
                 
+                // 인덱스를 -1로 세팅하여 'nextVerse()' 호출 시 첫 카드(0번)가 나오게 조정
                 currentVerseIndex = -1; 
-                randomHistory = [];
-                randomPointer = -1;
 
                 document.getElementById('main-app').style.display = 'flex';
                 nextVerse();
@@ -535,12 +537,10 @@
             }
         }
 
-        // 💡 완전히 무작위로 기말고사 범위 구절 전량을 출제하도록 전면 수정한 로직
         function setupExam() {
             const container = document.getElementById('exam-questions');
             container.innerHTML = "";
             
-            // 1. gimal_yn 이 1인 구절만 안전하게 필터링
             const examPool = bibleDB.filter(verse => verse.gimal_yn === 1);
 
             if (examPool.length === 0) {
@@ -548,16 +548,13 @@
                 return;
             }
 
-            // 2. 10개 추출 및 번호순 재정렬 로직 제거 -> 전체 범위를 누를 때마다 100% 무작위 셔플
             examVerses = [...examPool].sort(() => Math.random() - 0.5);
 
-            // 3. 상단 헤더 타이틀에 출제 문항 개수 실시간 표시 연동
             const titleElement = document.getElementById('exam-title');
             if (titleElement) {
                 titleElement.innerText = `📝 주관식 모의고사 (${examVerses.length}문항 전체)`;
             }
 
-            // 4. 무작위 순서 그대로 시험지 UI 출력
             examVerses.forEach((verse, index) => {
                 const item = document.createElement('div');
                 item.className = 'exam-item';
@@ -675,39 +672,19 @@
             window.scrollTo(0, 0);
         }
 
+        // 💡 셔플된 activeVerses 리스트를 순서대로 하나씩 탐색하므로 100% 중복이 배제됨
         function nextVerse() {
             if (activeVerses.length === 0) return;
 
-            if (currentMode === 'random') {
-                if (randomPointer < randomHistory.length - 1) {
-                    randomPointer++;
-                    renderSingleVerse(randomHistory[randomPointer]);
-                } else {
-                    const newIdx = Math.floor(Math.random() * activeVerses.length);
-                    randomHistory.push(newIdx);
-                    randomPointer++;
-                    renderSingleVerse(newIdx);
-                }
-            } else {
-                currentVerseIndex = (currentVerseIndex + 1) % activeVerses.length;
-                renderSingleVerse(currentVerseIndex);
-            }
+            currentVerseIndex = (currentVerseIndex + 1) % activeVerses.length;
+            renderSingleVerse(currentVerseIndex);
         }
 
         function prevVerse() {
             if (activeVerses.length === 0) return;
 
-            if (currentMode === 'random') {
-                if (randomPointer > 0) {
-                    randomPointer--;
-                    renderSingleVerse(randomHistory[randomPointer]);
-                } else {
-                    alert("첫 번째 구절입니다."); 
-                }
-            } else {
-                currentVerseIndex = (currentVerseIndex - 1 + activeVerses.length) % activeVerses.length;
-                renderSingleVerse(currentVerseIndex);
-            }
+            currentVerseIndex = (currentVerseIndex - 1 + activeVerses.length) % activeVerses.length;
+            renderSingleVerse(currentVerseIndex);
         }
 
         function renderSingleVerse(index) {
